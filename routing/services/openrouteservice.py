@@ -5,6 +5,7 @@ from typing import Any
 import httpx
 from django.conf import settings
 
+from routing.configuration import has_valid_api_key
 from routing.exceptions import (
     InvalidRoutingResponse,
     LocationNotFound,
@@ -183,8 +184,8 @@ class OpenRouteServiceClient:
         )
 
     def _require_api_key(self) -> None:
-        if not self.api_key:
-            raise RoutingConfigurationError("ORS_API_KEY is not configured.")
+        if not has_valid_api_key(self.api_key):
+            raise RoutingConfigurationError("OPENROUTESERVICE_API_KEY is not configured.")
 
     @staticmethod
     def _json_object(response: httpx.Response) -> dict[str, Any]:

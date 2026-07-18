@@ -19,8 +19,30 @@ cp .env.example .env
 python manage.py migrate
 ```
 
-Export values from `.env` in your shell when overriding the development
-defaults.
+The project automatically loads `.env` from the repository root with
+`python-dotenv`. Exported shell variables take precedence over values in the
+file.
+
+Create a free OpenRouteService account and API key at
+[openrouteservice.org](https://openrouteservice.org/dev/#/signup), then set it
+in `.env`:
+
+```dotenv
+DJANGO_SECRET_KEY=replace-with-a-local-secret
+DJANGO_DEBUG=true
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+DJANGO_DB_PATH=db.sqlite3
+OPENROUTESERVICE_API_KEY=replace-with-your-openrouteservice-key
+ORS_BASE_URL=https://api.openrouteservice.org
+ROUTING_CONNECT_TIMEOUT_SECONDS=3
+ROUTING_READ_TIMEOUT_SECONDS=15
+GEOCODE_CACHE_TTL_SECONDS=2592000
+ROUTE_CACHE_TTL_SECONDS=604800
+STATION_CORRIDOR_MILES=10
+```
+
+`OPENROUTESERVICE_API_KEY` is required. Django's startup check reports
+`routing.E001` when it is missing or still contains a known placeholder.
 
 ## Run
 

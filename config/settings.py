@@ -3,7 +3,10 @@
 import os
 from pathlib import Path
 
+from config.environment import load_environment
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_environment(BASE_DIR)
 
 
 def env_bool(name: str, default: bool = False) -> bool:
@@ -29,6 +32,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "drf_spectacular",
     "fuel.apps.FuelConfig",
     "routing.apps.RoutingConfig",
 ]
@@ -86,11 +90,25 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-REST_FRAMEWORK = {}
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "routing.exception_handler.api_exception_handler",
+}
 
-ORS_API_KEY = os.getenv("ORS_API_KEY", "")
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Fuel Route Optimizer API",
+    "DESCRIPTION": (
+        "Calculate a U.S. driving route with cost-effective fuel stops "
+        "for a 500-mile-range vehicle."
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+}
+
+ORS_API_KEY = os.getenv("OPENROUTESERVICE_API_KEY", "").strip()
 ORS_BASE_URL = os.getenv("ORS_BASE_URL", "https://api.openrouteservice.org")
 ROUTING_CONNECT_TIMEOUT_SECONDS = float(os.getenv("ROUTING_CONNECT_TIMEOUT_SECONDS", "3"))
 ROUTING_READ_TIMEOUT_SECONDS = float(os.getenv("ROUTING_READ_TIMEOUT_SECONDS", "15"))
 GEOCODE_CACHE_TTL_SECONDS = int(os.getenv("GEOCODE_CACHE_TTL_SECONDS", "2592000"))
 ROUTE_CACHE_TTL_SECONDS = int(os.getenv("ROUTE_CACHE_TTL_SECONDS", "604800"))
+STATION_CORRIDOR_MILES = float(os.getenv("STATION_CORRIDOR_MILES", "10"))

@@ -239,7 +239,10 @@ def test_missing_api_key_fails_without_an_http_call() -> None:
 
     client = routing_client(handler)
 
-    with pytest.raises(RoutingConfigurationError, match="ORS_API_KEY"):
+    with pytest.raises(
+        RoutingConfigurationError,
+        match="OPENROUTESERVICE_API_KEY",
+    ):
         client.geocode("dallas, tx")
 
     assert attempts == 0
