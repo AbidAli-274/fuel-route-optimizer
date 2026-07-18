@@ -1,0 +1,14 @@
+.git
+.gitignore
+.venv*
+__pycache__
+*.py[cod]
+*.egg-info
+.cache
+.pytest_cache
+.ruff_cache
+.coverage
+.env
+db.sqlite3
+htmlcov
+staticfiles

@@ -40,6 +40,21 @@ Expected response:
 {"status": "ok"}
 ```
 
+## Docker
+
+Docker Compose mounts the project for development and stores SQLite data in a
+named volume.
+
+```bash
+docker compose up --build
+docker compose exec web python manage.py migrate
+docker compose exec web python manage.py import_fuel_prices
+```
+
+The application is available at `http://127.0.0.1:8000/`. The Dockerfile uses
+Gunicorn by default; Compose overrides it with Django's development server for
+automatic code reload.
+
 ## Test
 
 ```bash
