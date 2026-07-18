@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fuel Route Optimizer</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  >
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #172033;
+      background: #f4f6f8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .page {
+      display: grid;
+      grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .panel {
+      position: relative;
+      z-index: 2;
+      overflow-y: auto;
+      padding: 2rem;
+      background: #ffffff;
+      border-right: 1px solid #dfe3e8;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.6rem, 3vw, 2rem);
+      letter-spacing: -0.03em;
+    }
+
+    .intro {
+      margin: 0.5rem 0 1.75rem;
+      color: #5c667a;
+      line-height: 1.5;
+    }
+
+    .field {
+      display: grid;
+      gap: 0.4rem;
+      margin-bottom: 1rem;
+    }
+
+    label {
+      font-size: 0.875rem;
+      font-weight: 650;
+    }
+
+    input {
+      width: 100%;
+      min-height: 2.75rem;
+      padding: 0.65rem 0.75rem;
+      color: inherit;
+      background: #ffffff;
+      border: 1px solid #b7c0cd;
+      border-radius: 0.5rem;
+    }
+
+    input:focus-visible,
+    button:focus-visible {
+      outline: 3px solid rgba(31, 111, 235, 0.25);
+      outline-offset: 2px;
+    }
+
+    button {
+      width: 100%;
+      min-height: 2.75rem;
+      padding: 0.7rem 1rem;
+      color: #ffffff;
+      font-weight: 700;
+      background: #176b45;
+      border: 0;
+      border-radius: 0.5rem;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #105737;
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    .status {
+      min-height: 1.5rem;
+      margin: 1rem 0 0;
+      color: #5c667a;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    .status[data-error="true"] {
+      color: #a12622;
+    }
+
+    .summary {
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #e4e7eb;
+    }
+
+    .summary[hidden] {
+      display: none;
+    }
+
+    .summary h2,
+    .stops h3 {
+      margin: 0 0 0.9rem;
+      font-size: 1.05rem;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin: 0;
+    }
+
+    .metric {
+      padding: 0.8rem;
+      background: #f4f6f8;
+      border-radius: 0.5rem;
+    }
+
+    .metric dt {
+      color: #687386;
+      font-size: 0.75rem;
+      font-weight: 650;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .metric dd {
+      margin: 0.25rem 0 0;
+      font-size: 1.1rem;
+      font-weight: 750;
+    }
+
+    .stops {
+      margin-top: 1.25rem;
+    }
+
+    .stop-list {
+      display: grid;
+      gap: 0.65rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .stop-list li {
+      padding: 0.75rem;
+      border: 1px solid #e0e5eb;
+      border-radius: 0.5rem;
+      line-height: 1.4;
+    }
+
+    .stop-name {
+      display: block;
+      font-weight: 700;
+    }
+
+    .stop-detail {
+      color: #687386;
+      font-size: 0.85rem;
+    }
+
+    #map {
+      min-height: 100vh;
+      background: #dce4e8;
+    }
+
+    .popup-title {
+      margin: 0 0 0.35rem;
+      font-weight: 750;
+    }
+
+    .popup-line {
+      margin: 0.15rem 0;
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto minmax(420px, 55vh);
+      }
+
+      .panel {
+        overflow: visible;
+        padding: 1.25rem;
+        border-right: 0;
+        border-bottom: 1px solid #dfe3e8;
+      }
+
+      #map {
+        min-height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="panel" aria-labelledby="page-title">
+      <h1 id="page-title">Fuel Route Optimizer</h1>
+      <p class="intro">Plan a U.S. route and view cost-effective fuel stops.</p>
+
+      <form id="route-form" data-api-url="{% url 'routing:route-plan' %}">
+        <div class="field">
+          <label for="start">Starting location</label>
+          <input
+            id="start"
+            name="start"
+            type="text"
+            value="Dallas, TX"
+            maxlength="500"
+            autocomplete="street-address"
+            required
+          >
+        </div>
+        <div class="field">
+          <label for="finish">Destination</label>
+          <input
+            id="finish"
+            name="finish"
+            type="text"
+            value="Albuquerque, NM"
+            maxlength="500"
+            autocomplete="street-address"
+            required
+          >
+        </div>
+        <button id="submit-button" type="submit">Plan route</button>
+      </form>
+
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+
+      <section id="summary" class="summary" aria-labelledby="summary-title" hidden>
+        <h2 id="summary-title">Trip summary</h2>
+        <dl class="metrics">
+          <div class="metric">
+            <dt>Distance</dt>
+            <dd id="distance"></dd>
+          </div>
+          <div class="metric">
+            <dt>Duration</dt>
+            <dd id="duration"></dd>
+          </div>
+          <div class="metric">
+            <dt>Fuel cost</dt>
+            <dd id="fuel-cost"></dd>
+          </div>
+          <div class="metric">
+            <dt>Fuel stops</dt>
+            <dd id="stop-count"></dd>
+          </div>
+        </dl>
+        <div class="stops">
+          <h3>Stops</h3>
+          <ol id="stop-list" class="stop-list"></ol>
+        </div>
+      </section>
+    </section>
+
+    <div id="map" role="region" aria-label="Route map"></div>
+  </main>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script>
+    (() => {
+      "use strict";
+
+      const form = document.querySelector("#route-form");
+      const button = document.querySelector("#submit-button");
+      const status = document.querySelector("#status");
+      const summary = document.querySelector("#summary");
+      const stopList = document.querySelector("#stop-list");
+      const map = L.map("map", { zoomControl: true }).setView([39.5, -98.35], 4);
+      const markers = L.layerGroup().addTo(map);
+      let routeLayer = null;
+      let activeRequest = null;
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors",
+      }).addTo(map);
+
+      function setStatus(message, isError = false) {
+        status.textContent = message;
+        status.dataset.error = String(isError);
+      }
+
+      function popupContent(title, lines) {
+        const container = document.createElement("div");
+        const heading = document.createElement("p");
+        heading.className = "popup-title";
+        heading.textContent = title;
+        container.appendChild(heading);
+
+        for (const line of lines) {
+          const paragraph = document.createElement("p");
+          paragraph.className = "popup-line";
+          paragraph.textContent = line;
+          container.appendChild(paragraph);
+        }
+        return container;
+      }
+
+      function addLocationMarker(location, label, color) {
+        return L.circleMarker([location.latitude, location.longitude], {
+          radius: 7,
+          color: "#ffffff",
+          weight: 2,
+          fillColor: color,
+          fillOpacity: 1,
+        })
+          .bindPopup(popupContent(label, [location.resolved_name]))
+          .addTo(markers);
+      }
+
+      function addFuelStop(stop) {
+        L.circleMarker([stop.location.latitude, stop.location.longitude], {
+          radius: 8,
+          color: "#ffffff",
+          weight: 2,
+          fillColor: "#d97706",
+          fillOpacity: 1,
+        })
+          .bindPopup(
+            popupContent(stop.name, [
+              `${stop.address}, ${stop.city}, ${stop.state}`,
+              `Route mile: ${stop.route_mile}`,
+              `Price: $${stop.price_per_gallon} per gallon`,
+              `Purchase: ${stop.gallons_purchased} gallons`,
+              `Cost: $${stop.purchase_cost}`,
+            ])
+          )
+          .addTo(markers);
+      }
+
+      function renderSummary(data) {
+        document.querySelector("#distance").textContent =
+          `${data.route.distance_miles} miles`;
+        document.querySelector("#duration").textContent =
+          `${data.route.duration_minutes} minutes`;
+        document.querySelector("#fuel-cost").textContent =
+          `${data.cost_summary.currency} ${data.cost_summary.total_fuel_cost}`;
+        document.querySelector("#stop-count").textContent =
+          String(data.fuel_stops.length);
+
+        stopList.replaceChildren();
+        if (data.fuel_stops.length === 0) {
+          const item = document.createElement("li");
+          item.textContent = "No en-route fuel purchase is required.";
+          stopList.appendChild(item);
+        } else {
+          for (const stop of data.fuel_stops) {
+            const item = document.createElement("li");
+            const name = document.createElement("span");
+            const detail = document.createElement("span");
+            name.className = "stop-name";
+            detail.className = "stop-detail";
+            name.textContent = `${stop.sequence}. ${stop.name}`;
+            detail.textContent =
+              `${stop.city}, ${stop.state} · ${stop.gallons_purchased} gal · $${stop.purchase_cost}`;
+            item.append(name, detail);
+            stopList.appendChild(item);
+          }
+        }
+        summary.hidden = false;
+      }
+
+      function renderMap(data) {
+        markers.clearLayers();
+        if (routeLayer !== null) {
+          routeLayer.remove();
+        }
+
+        routeLayer = L.geoJSON(data.route.geometry, {
+          style: {
+            color: "#176b45",
+            weight: 5,
+            opacity: 0.9,
+          },
+        }).addTo(map);
+
+        addLocationMarker(data.start, "Start", "#2563eb");
+        addLocationMarker(data.finish, "Finish", "#b91c1c");
+        for (const stop of data.fuel_stops) {
+          addFuelStop(stop);
+        }
+
+        const bounds = routeLayer.getBounds();
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [32, 32] });
+        }
+      }
+
+      async function parseResponse(response) {
+        try {
+          return await response.json();
+        } catch {
+          return null;
+        }
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        activeRequest?.abort();
+        const requestController = new AbortController();
+        activeRequest = requestController;
+        button.disabled = true;
+        button.textContent = "Planning…";
+        summary.hidden = true;
+        setStatus("Calculating route and fuel stops…");
+
+        try {
+          const response = await fetch(form.dataset.apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            signal: requestController.signal,
+            body: JSON.stringify({
+              start: form.elements.start.value,
+              finish: form.elements.finish.value,
+            }),
+          });
+          const data = await parseResponse(response);
+
+          if (!response.ok) {
+            throw new Error(
+              data?.error?.message || `The request failed with HTTP ${response.status}.`
+            );
+          }
+          if (data === null) {
+            throw new Error("The server returned an invalid response.");
+          }
+
+          renderMap(data);
+          renderSummary(data);
+          setStatus("Route plan ready.");
+        } catch (error) {
+          if (error.name !== "AbortError") {
+            setStatus(error.message || "Unable to plan the route.", true);
+          }
+        } finally {
+          if (activeRequest === requestController) {
+            activeRequest = null;
+            button.disabled = false;
+            button.textContent = "Plan route";
+          }
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,8 +1,9 @@
-# Fuel Route Optimizer API
+# Fuel Route Optimizer
 
-A Django REST API that calculates a driving route between two locations in the
-contiguous United States, identifies cost-effective fuel stops, and estimates
-fuel purchased during the trip.
+A Django application that calculates a driving route between two locations in
+the contiguous United States, identifies cost-effective fuel stops, and
+estimates fuel purchased during the trip. It includes a documented REST API and
+a small Leaflet map for demonstrating the result.
 
 The solution is intentionally scoped as a polished take-home assessment:
 SQLite keeps setup small, OpenRouteService provides geocoding and routing, and
@@ -11,6 +12,7 @@ the optimization policy is deterministic and explainable.
 ## Features
 
 - Route planning for U.S. start and finish locations
+- Responsive Leaflet demo with OpenStreetMap tiles
 - GeoJSON route geometry suitable for rendering on a map
 - Fuel-stop selection from the supplied assessment price data
 - A 500-mile vehicle range and 10 MPG fuel-consumption model
@@ -30,8 +32,8 @@ configuration:
   route-corridor station selection.
 - `routing` owns the OpenRouteService client, persistent caches, route
   orchestration, fuel optimization, serializers, and API view.
-- `config` owns environment loading, Django settings, health checks, URLs, and
-  OpenAPI configuration.
+- `config` owns environment loading, Django settings, health checks, URLs,
+  OpenAPI configuration, and the demo template.
 
 A route request flows through these layers:
 
@@ -163,9 +165,10 @@ docker compose exec web python manage.py import_fuel_prices
 docker compose exec web python manage.py check
 ```
 
-Then open `http://127.0.0.1:8000/api/docs/`. The first import downloads and
-caches the GeoNames U.S. archive; subsequent imports reuse it. Compose mounts
-the source tree for development and stores SQLite at `/data/db.sqlite3` in the
+Then open the map demo at `http://127.0.0.1:8000/` or Swagger at
+`http://127.0.0.1:8000/api/docs/`. The first import downloads and caches the
+GeoNames U.S. archive; subsequent imports reuse it. Compose mounts the source
+tree for development and stores SQLite at `/data/db.sqlite3` in the
 `sqlite_data` named volume.
 
 Useful lifecycle commands:
@@ -237,10 +240,26 @@ python manage.py import_fuel_prices --replace
 The command prints source, filtered, duplicate, coordinate-match, create,
 update, unchanged, and delete counts.
 
+## Demo frontend
+
+Open `http://127.0.0.1:8000/` after starting the application.
+
+The page uses a Django template, vanilla JavaScript, Leaflet 1.9.4, and
+OpenStreetMap tiles. It calls the existing route-planning API, draws the
+returned GeoJSON route, adds start/finish and fuel-stop markers, and displays
+the trip summary. Marker popups show the station address, route mile, price,
+gallons purchased, and purchase cost.
+
+The frontend contains presentation logic only. Route selection, station
+selection, gallons, and costs are calculated by the backend. Leaflet is loaded
+from the pinned unpkg CDN release, so the browser needs internet access for the
+map library and OpenStreetMap tiles.
+
 ## API documentation
 
 With the server running:
 
+- Demo map: `http://127.0.0.1:8000/`
 - Swagger UI: `http://127.0.0.1:8000/api/docs/`
 - ReDoc: `http://127.0.0.1:8000/api/redoc/`
 - OpenAPI schema: `http://127.0.0.1:8000/api/schema/`
@@ -450,4 +469,4 @@ OpenAPI availability.
   breaking.
 - Move to PostgreSQL for concurrent production workloads.
 - Refresh fuel prices through a scheduled, versioned ingestion pipeline.
-- Add a frontend map that renders the returned GeoJSON and stop markers.
+- Self-host static frontend dependencies for fully controlled deployments.
