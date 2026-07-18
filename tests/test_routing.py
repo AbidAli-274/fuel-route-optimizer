@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 
 import httpx
@@ -131,10 +132,10 @@ def test_cold_route_uses_three_calls_and_cached_route_uses_zero() -> None:
     assert route_cache.profile == "driving-car"
     assert route_cache.expires_at - route_cache.cached_at == timedelta(seconds=120)
     assert route_cache.cache_key == (
-        "openrouteservice|route|driving-car|v1|-96.797000,32.776700->-106.650400,35.084400"
+        "openrouteservice|route|driving-car|v2|-96.797000,32.776700->-106.650400,35.084400"
     )
     geocode_cache = GeocodeCache.objects.get(normalized_query="dallas, tx")
-    assert geocode_cache.cache_key == ("openrouteservice|geocode|us|v1|dallas, tx")
+    assert geocode_cache.cache_key == ("openrouteservice|geocode|us|v2|dallas, tx")
     assert geocode_cache.expires_at - geocode_cache.cached_at == timedelta(seconds=60)
 
 
@@ -211,11 +212,81 @@ def test_empty_geocode_result_is_not_cached() -> None:
 
 
 @override_settings(ORS_API_KEY="test-key")
+def test_geocode_rejects_locations_outside_contiguous_us() -> None:
+    client = routing_client(
+        lambda _request: httpx.Response(
+            200,
+            json={
+                "features": [
+                    {
+                        "properties": {
+                            "label": "Anchorage, Alaska, United States",
+                            "country_a": "USA",
+                        },
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": [-149.9003, 61.2181],
+                        },
+                    }
+                ]
+            },
+        )
+    )
+
+    with pytest.raises(LocationNotFound):
+        client.geocode("Anchorage, AK")
+
+
+@override_settings(ORS_API_KEY="test-key")
+def test_geocode_requires_an_explicit_us_country_code() -> None:
+    client = routing_client(
+        lambda _request: httpx.Response(
+            200,
+            json={
+                "features": [
+                    {
+                        "properties": {"label": "Country omitted"},
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": [-117.0, 32.5],
+                        },
+                    }
+                ]
+            },
+        )
+    )
+
+    with pytest.raises(LocationNotFound):
+        client.geocode("ambiguous border location")
+
+
+@override_settings(ORS_API_KEY="test-key")
 def test_invalid_route_response_is_rejected() -> None:
     client = routing_client(
         lambda _request: httpx.Response(
             200,
             json={"features": [{"geometry": {"type": "Point"}}]},
+        )
+    )
+
+    with pytest.raises(InvalidRoutingResponse):
+        client.directions(
+            start_latitude=32.7767,
+            start_longitude=-96.797,
+            finish_latitude=35.0844,
+            finish_longitude=-106.6504,
+        )
+
+
+@override_settings(ORS_API_KEY="test-key")
+def test_non_finite_route_response_is_rejected() -> None:
+    response = route_response().json()
+    response["features"][0]["properties"]["summary"]["distance"] = float("inf")
+    client = routing_client(
+        lambda _request: httpx.Response(
+            200,
+            content=json.dumps(response),
+            headers={"Content-Type": "application/json"},
         )
     )
 

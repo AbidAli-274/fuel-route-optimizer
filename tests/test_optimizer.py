@@ -195,3 +195,11 @@ def test_station_selector_projects_and_filters_city_centroids() -> None:
     assert selected[0].station_id == 1
     assert float(selected[0].route_mile) == pytest.approx(300, rel=0.01)
     assert selected[0].distance_from_route_miles < Decimal("4")
+
+
+def test_station_selector_rejects_explicit_zero_corridor() -> None:
+    with pytest.raises(ValueError, match="corridor must be positive"):
+        select_nearby_stations(
+            route_result(distance_miles=600),
+            corridor_miles=0,
+        )

@@ -2,7 +2,6 @@ from decimal import Decimal
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.utils import timezone
 
 
 class GeocodeCache(models.Model):
@@ -35,9 +34,6 @@ class GeocodeCache(models.Model):
     def __str__(self) -> str:
         return self.cache_key
 
-    def is_fresh(self) -> bool:
-        return self.expires_at > timezone.now()
-
 
 class RouteCache(models.Model):
     cache_key = models.CharField(max_length=300, primary_key=True)
@@ -58,6 +54,3 @@ class RouteCache(models.Model):
 
     def __str__(self) -> str:
         return self.cache_key
-
-    def is_fresh(self) -> bool:
-        return self.expires_at > timezone.now()

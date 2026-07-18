@@ -29,7 +29,8 @@ def select_nearby_stations(
     *,
     corridor_miles: float | None = None,
 ) -> tuple[StationCandidate, ...]:
-    corridor = corridor_miles or settings.STATION_CORRIDOR_MILES
+    """Project coordinate-matched stations onto a route and filter its corridor."""
+    corridor = settings.STATION_CORRIDOR_MILES if corridor_miles is None else corridor_miles
     if corridor <= 0:
         raise ValueError("Station corridor must be positive.")
 

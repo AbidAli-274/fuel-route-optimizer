@@ -71,6 +71,16 @@ class RoutePlanView(APIView):
                 request_only=True,
             ),
             OpenApiExample(
+                "Include starting tank",
+                value={
+                    "start": "Dallas, TX",
+                    "finish": "Albuquerque, NM",
+                    "include_initial_fill": True,
+                    "initial_fuel_price_per_gallon": "3.25000000",
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
                 "Validation error",
                 value=error_response(
                     code="VALIDATION_ERROR",
@@ -97,6 +107,36 @@ class RoutePlanView(APIView):
                 ),
                 response_only=True,
                 status_codes=["422"],
+            ),
+            OpenApiExample(
+                "Provider rate limited",
+                value=error_response(
+                    code="ROUTING_RATE_LIMITED",
+                    message="The routing provider rate limit was reached.",
+                ),
+                response_only=True,
+                status_codes=["429"],
+            ),
+            OpenApiExample(
+                "Provider unavailable",
+                value=error_response(
+                    code="ROUTING_UNAVAILABLE",
+                    message="The routing provider could not be reached.",
+                ),
+                response_only=True,
+                status_codes=["502"],
+            ),
+            OpenApiExample(
+                "Routing not configured",
+                value=error_response(
+                    code="ROUTING_NOT_CONFIGURED",
+                    message=(
+                        "OpenRouteService credentials are missing or invalid. "
+                        "Configure OPENROUTESERVICE_API_KEY with a valid key."
+                    ),
+                ),
+                response_only=True,
+                status_codes=["503"],
             ),
         ],
         tags=["Route planning"],
@@ -152,8 +192,8 @@ class RoutePlanView(APIView):
                 error_response(
                     code="ROUTING_NOT_CONFIGURED",
                     message=(
-                        "OPENROUTESERVICE_API_KEY is not configured. "
-                        "Copy .env.example to .env and add a valid key."
+                        "OpenRouteService credentials are missing or invalid. "
+                        "Configure OPENROUTESERVICE_API_KEY with a valid key."
                     ),
                 ),
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,

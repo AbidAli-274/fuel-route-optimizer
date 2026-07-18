@@ -8,7 +8,10 @@ __pycache__
 .pytest_cache
 .ruff_cache
 .coverage
-.env
-db.sqlite3
+.env*
+!.env.example
+*.sqlite3
 htmlcov
 staticfiles
+tests
+docker-compose.yml

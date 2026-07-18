@@ -13,7 +13,8 @@ htmlcov/
 venv/
 
 # Django and local configuration
-.env
+.env*
+!.env.example
 *.sqlite3
 staticfiles/
 

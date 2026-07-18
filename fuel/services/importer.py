@@ -70,7 +70,9 @@ class ImportSummary:
     deleted: int
 
 
-def normalize_whitespace(value: str) -> str:
+def normalize_whitespace(value: str | None) -> str:
+    if value is None:
+        return ""
     return WHITESPACE_RE.sub(" ", value).strip()
 
 
@@ -160,6 +162,7 @@ def build_station_records(
     csv_path: Path,
     coordinates: dict[tuple[str, str], tuple[Decimal, Decimal]],
 ) -> tuple[list[StationRecord], dict[str, int]]:
+    """Normalize CSV rows into one validated record per OPIS station."""
     grouped_rows: dict[int, list[dict[str, object]]] = defaultdict(list)
     source_rows = 0
     us_rows = 0
@@ -179,6 +182,10 @@ def build_station_records(
 
         for row_number, row in enumerate(reader, start=2):
             source_rows += 1
+            missing_values = [field for field in CSV_FIELDS if row.get(field) is None]
+            if missing_values:
+                missing = ", ".join(sorted(missing_values))
+                raise ImportDataError(f"Row {row_number}: missing values for {missing}.")
             state = normalize_whitespace(row["State"]).upper()
             if state not in US_STATE_CODES:
                 non_us_rows += 1
@@ -269,6 +276,7 @@ def build_station_records(
 
 
 def download_geonames_archive(url: str, destination: Path) -> Path:
+    """Download the GeoNames archive once and return its local path."""
     if destination.exists():
         return destination
 
@@ -293,7 +301,10 @@ def download_geonames_archive(url: str, destination: Path) -> Path:
 def synchronize_stations(
     records: list[StationRecord],
     source_counts: dict[str, int],
+    *,
+    replace_existing: bool = False,
 ) -> ImportSummary:
+    """Upsert station records and optionally remove rows absent from the source."""
     existing = FuelStation.objects.in_bulk(field_name="opis_truckstop_id")
     now = timezone.now()
     to_create: list[FuelStation] = []
@@ -330,9 +341,11 @@ def synchronize_stations(
             batch_size=500,
         )
 
-    stale_primary_keys = [
-        station.pk for opis_id, station in existing.items() if opis_id not in incoming_ids
-    ]
+    stale_primary_keys = (
+        [station.pk for opis_id, station in existing.items() if opis_id not in incoming_ids]
+        if replace_existing
+        else []
+    )
     deleted = 0
     for offset in range(0, len(stale_primary_keys), 500):
         batch = stale_primary_keys[offset : offset + 500]

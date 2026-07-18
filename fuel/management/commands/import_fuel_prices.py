@@ -1,3 +1,4 @@
+import csv
 from pathlib import Path
 
 from django.conf import settings
@@ -33,6 +34,11 @@ class Command(BaseCommand):
             default=GEONAMES_DOWNLOAD_URL,
             help="GeoNames archive URL used when --geonames-zip is omitted.",
         )
+        parser.add_argument(
+            "--replace",
+            action="store_true",
+            help="Delete existing stations that are absent from this CSV.",
+        )
 
     def handle(self, *args, **options) -> None:
         csv_path: Path = options["csv"]
@@ -46,8 +52,12 @@ class Command(BaseCommand):
                 )
             coordinates = load_city_coordinates(geonames_path)
             records, source_counts = build_station_records(csv_path, coordinates)
-            summary = synchronize_stations(records, source_counts)
-        except ImportDataError as exc:
+            summary = synchronize_stations(
+                records,
+                source_counts,
+                replace_existing=options["replace"],
+            )
+        except (ImportDataError, UnicodeError, csv.Error) as exc:
             raise CommandError(str(exc)) from exc
 
         self.stdout.write(self.style.SUCCESS("Fuel-price import completed."))

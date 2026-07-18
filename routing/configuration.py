@@ -2,6 +2,7 @@ PLACEHOLDER_API_KEYS = frozenset(
     {
         "",
         "replace-with-openrouteservice-key",
+        "replace-with-your-openrouteservice-key",
         "your-openrouteservice-api-key",
     }
 )

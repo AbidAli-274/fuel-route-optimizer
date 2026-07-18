@@ -167,6 +167,83 @@ def test_import_is_idempotent(tmp_path: Path, geonames_zip: Path) -> None:
 
 
 @pytest.mark.django_db
+def test_partial_import_does_not_delete_existing_stations_by_default(
+    tmp_path: Path,
+    geonames_zip: Path,
+) -> None:
+    first_csv = write_csv(tmp_path / "first.csv", [station_row()])
+    second_csv = write_csv(
+        tmp_path / "second.csv",
+        [station_row(**{"OPIS Truckstop ID": "202"})],
+    )
+    call_command(
+        "import_fuel_prices",
+        csv=first_csv,
+        geonames_zip=geonames_zip,
+        stdout=io.StringIO(),
+    )
+
+    call_command(
+        "import_fuel_prices",
+        csv=second_csv,
+        geonames_zip=geonames_zip,
+        stdout=io.StringIO(),
+    )
+
+    assert set(FuelStation.objects.values_list("opis_truckstop_id", flat=True)) == {
+        101,
+        202,
+    }
+
+
+@pytest.mark.django_db
+def test_replace_import_deletes_stations_absent_from_csv(
+    tmp_path: Path,
+    geonames_zip: Path,
+) -> None:
+    first_csv = write_csv(tmp_path / "first.csv", [station_row()])
+    second_csv = write_csv(
+        tmp_path / "second.csv",
+        [station_row(**{"OPIS Truckstop ID": "202"})],
+    )
+    call_command(
+        "import_fuel_prices",
+        csv=first_csv,
+        geonames_zip=geonames_zip,
+        stdout=io.StringIO(),
+    )
+
+    call_command(
+        "import_fuel_prices",
+        csv=second_csv,
+        geonames_zip=geonames_zip,
+        replace=True,
+        stdout=io.StringIO(),
+    )
+
+    assert list(FuelStation.objects.values_list("opis_truckstop_id", flat=True)) == [202]
+
+
+@pytest.mark.django_db
+def test_import_reports_truncated_csv_rows(
+    tmp_path: Path,
+    geonames_zip: Path,
+) -> None:
+    csv_path = tmp_path / "truncated.csv"
+    csv_path.write_text(
+        ",".join(CSV_FIELDNAMES) + "\n101,Example Stop\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(CommandError, match="Row 2: missing values"):
+        call_command(
+            "import_fuel_prices",
+            csv=csv_path,
+            geonames_zip=geonames_zip,
+        )
+
+
+@pytest.mark.django_db
 def test_import_retains_unmatched_station_without_coordinates(
     tmp_path: Path,
     geonames_zip: Path,

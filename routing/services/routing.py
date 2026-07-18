@@ -12,14 +12,17 @@ from routing.types import ResolvedLocation, RouteResult
 
 COORDINATE_QUANTUM = Decimal("0.000001")
 WHITESPACE_RE = re.compile(r"\s+")
-CACHE_FORMAT_VERSION = "v1"
+CACHE_FORMAT_VERSION = "v2"
 
 
 class RoutingService:
+    """Resolve locations and routes through persistent provider caches."""
+
     def __init__(self, *, client: OpenRouteServiceClient | None = None) -> None:
         self.client = client or OpenRouteServiceClient()
 
     def get_route(self, start: str, finish: str) -> RouteResult:
+        """Return a cached or provider-backed route between two inputs."""
         resolved_start = self.resolve_location(start)
         resolved_finish = self.resolve_location(finish)
         route_key = self.route_cache_key(resolved_start, resolved_finish)
@@ -68,6 +71,7 @@ class RoutingService:
         )
 
     def resolve_location(self, input_text: str) -> ResolvedLocation:
+        """Return a cached or provider-backed geocode result."""
         normalized_query = self.normalize_location(input_text)
         geocode_key = self.geocode_cache_key(normalized_query)
         now = timezone.now()

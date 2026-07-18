@@ -22,14 +22,14 @@ def seed_cached_route(*, distance_miles: float) -> None:
     expires_at = now + timedelta(days=7)
     locations = [
         (
-            "openrouteservice|geocode|us|v1|dallas, tx",
+            "openrouteservice|geocode|us|v2|dallas, tx",
             "dallas, tx",
             "Dallas, Texas, United States",
             Decimal("35.000000"),
             Decimal("-100.000000"),
         ),
         (
-            "openrouteservice|geocode|us|v1|albuquerque, nm",
+            "openrouteservice|geocode|us|v2|albuquerque, nm",
             "albuquerque, nm",
             "Albuquerque, New Mexico, United States",
             Decimal("35.000000"),
@@ -49,7 +49,7 @@ def seed_cached_route(*, distance_miles: float) -> None:
         )
     RouteCache.objects.create(
         cache_key=(
-            "openrouteservice|route|driving-car|v1|-100.000000,35.000000->-90.000000,35.000000"
+            "openrouteservice|route|driving-car|v2|-100.000000,35.000000->-90.000000,35.000000"
         ),
         provider="openrouteservice",
         profile="driving-car",
@@ -253,8 +253,8 @@ def test_route_plan_hides_internal_configuration_details(
     assert response.json()["error"] == {
         "code": "ROUTING_NOT_CONFIGURED",
         "message": (
-            "OPENROUTESERVICE_API_KEY is not configured. "
-            "Copy .env.example to .env and add a valid key."
+            "OpenRouteService credentials are missing or invalid. "
+            "Configure OPENROUTESERVICE_API_KEY with a valid key."
         ),
     }
 

@@ -1,5 +1,8 @@
+import atexit
+import math
 import time
 from collections.abc import Callable
+from functools import lru_cache
 from typing import Any
 
 import httpx
@@ -16,8 +19,30 @@ from routing.exceptions import (
 )
 from routing.types import ProviderRoute
 
+CONTIGUOUS_US_LATITUDE_RANGE = (24.396308, 49.384358)
+CONTIGUOUS_US_LONGITUDE_RANGE = (-124.848974, -66.885444)
+
+
+@lru_cache(maxsize=4)
+def _shared_http_client(
+    connect_timeout: float,
+    read_timeout: float,
+) -> httpx.Client:
+    client = httpx.Client(
+        timeout=httpx.Timeout(
+            connect=connect_timeout,
+            read=read_timeout,
+            write=read_timeout,
+            pool=connect_timeout,
+        )
+    )
+    atexit.register(client.close)
+    return client
+
 
 class OpenRouteServiceClient:
+    """Small validated client for OpenRouteService geocoding and directions."""
+
     provider_name = "openrouteservice"
     profile = "driving-car"
     transient_statuses = frozenset({502, 503, 504})
@@ -31,16 +56,13 @@ class OpenRouteServiceClient:
         self.api_key = settings.ORS_API_KEY
         self.base_url = settings.ORS_BASE_URL.rstrip("/")
         self.sleep = sleep
-        self.client = client or httpx.Client(
-            timeout=httpx.Timeout(
-                connect=settings.ROUTING_CONNECT_TIMEOUT_SECONDS,
-                read=settings.ROUTING_READ_TIMEOUT_SECONDS,
-                write=settings.ROUTING_READ_TIMEOUT_SECONDS,
-                pool=settings.ROUTING_CONNECT_TIMEOUT_SECONDS,
-            )
+        self.client = client or _shared_http_client(
+            settings.ROUTING_CONNECT_TIMEOUT_SECONDS,
+            settings.ROUTING_READ_TIMEOUT_SECONDS,
         )
 
     def geocode(self, query: str) -> tuple[str, float, float]:
+        """Resolve a query to one contiguous-U.S. coordinate pair."""
         self._require_api_key()
         response = self._request(
             "GET",
@@ -65,21 +87,21 @@ class OpenRouteServiceClient:
             if not isinstance(properties, dict) or not isinstance(geometry, dict):
                 continue
             country_code = str(properties.get("country_a", "")).upper()
-            if country_code and country_code not in {"US", "USA"}:
+            if country_code not in {"US", "USA"}:
                 continue
             coordinates = geometry.get("coordinates")
             if not self._valid_coordinate_pair(coordinates):
                 continue
             longitude = float(coordinates[0])
             latitude = float(coordinates[1])
-            if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+            if not self._inside_contiguous_us(latitude, longitude):
                 continue
             label = properties.get("label") or properties.get("name")
             if not isinstance(label, str) or not label.strip():
                 continue
             return label.strip(), latitude, longitude
 
-        raise LocationNotFound(f"No U.S. location was found for {query!r}.")
+        raise LocationNotFound(f"No contiguous-U.S. location was found for {query!r}.")
 
     def directions(
         self,
@@ -89,6 +111,7 @@ class OpenRouteServiceClient:
         finish_latitude: float,
         finish_longitude: float,
     ) -> ProviderRoute:
+        """Retrieve and validate a GeoJSON driving route."""
         self._require_api_key()
         response = self._request(
             "POST",
@@ -209,15 +232,30 @@ class OpenRouteServiceClient:
 
     @staticmethod
     def _positive_number(value: object) -> bool:
-        return isinstance(value, int | float) and not isinstance(value, bool) and value > 0
+        return (
+            isinstance(value, int | float)
+            and not isinstance(value, bool)
+            and math.isfinite(value)
+            and value > 0
+        )
 
     @staticmethod
     def _valid_coordinate_pair(value: object) -> bool:
+        if not isinstance(value, list) or len(value) < 2:
+            return False
+        longitude, latitude = value[:2]
+        if not all(
+            isinstance(coordinate, int | float)
+            and not isinstance(coordinate, bool)
+            and math.isfinite(coordinate)
+            for coordinate in (longitude, latitude)
+        ):
+            return False
+        return -180 <= longitude <= 180 and -90 <= latitude <= 90
+
+    @staticmethod
+    def _inside_contiguous_us(latitude: float, longitude: float) -> bool:
         return (
-            isinstance(value, list)
-            and len(value) >= 2
-            and all(
-                isinstance(coordinate, int | float) and not isinstance(coordinate, bool)
-                for coordinate in value[:2]
-            )
+            CONTIGUOUS_US_LATITUDE_RANGE[0] <= latitude <= CONTIGUOUS_US_LATITUDE_RANGE[1]
+            and CONTIGUOUS_US_LONGITUDE_RANGE[0] <= longitude <= CONTIGUOUS_US_LONGITUDE_RANGE[1]
         )

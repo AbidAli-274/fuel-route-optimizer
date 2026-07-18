@@ -16,6 +16,7 @@ def optimize_fuel_stops(
     include_initial_fill: bool,
     initial_fuel_price_per_gallon: Decimal | None,
 ) -> FuelPlan:
+    """Choose range-safe purchases using the next-cheaper-station policy."""
     route_distance = Decimal(str(route_distance_miles))
     usable_candidates = tuple(
         candidate for candidate in candidates if ZERO < candidate.route_mile < route_distance

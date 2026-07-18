@@ -7,6 +7,8 @@ from routing.types import RoutePlan
 
 
 class RoutePlanningService:
+    """Coordinate route retrieval, station selection, and fuel optimization."""
+
     def __init__(self, *, routing_service: RoutingService | None = None) -> None:
         self.routing_service = routing_service or RoutingService()
 
@@ -18,6 +20,7 @@ class RoutePlanningService:
         include_initial_fill: bool,
         initial_fuel_price_per_gallon: Decimal | None = None,
     ) -> RoutePlan:
+        """Build a complete route and fuel-purchase plan."""
         route = self.routing_service.get_route(start, finish)
         candidates = select_nearby_stations(route)
         fuel_plan = optimize_fuel_stops(
