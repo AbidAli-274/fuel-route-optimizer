@@ -8,6 +8,7 @@ WORKDIR /build
 COPY pyproject.toml README.md ./
 COPY config ./config
 COPY fuel ./fuel
+COPY routing ./routing
 
 RUN python -m pip wheel --wheel-dir /wheels .
 

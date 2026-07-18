@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "fuel.apps.FuelConfig",
+    "routing.apps.RoutingConfig",
 ]
 
 MIDDLEWARE = [
@@ -86,3 +87,10 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {}
+
+ORS_API_KEY = os.getenv("ORS_API_KEY", "")
+ORS_BASE_URL = os.getenv("ORS_BASE_URL", "https://api.openrouteservice.org")
+ROUTING_CONNECT_TIMEOUT_SECONDS = float(os.getenv("ROUTING_CONNECT_TIMEOUT_SECONDS", "3"))
+ROUTING_READ_TIMEOUT_SECONDS = float(os.getenv("ROUTING_READ_TIMEOUT_SECONDS", "15"))
+GEOCODE_CACHE_TTL_SECONDS = int(os.getenv("GEOCODE_CACHE_TTL_SECONDS", "2592000"))
+ROUTE_CACHE_TTL_SECONDS = int(os.getenv("ROUTE_CACHE_TTL_SECONDS", "604800"))

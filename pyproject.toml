@@ -12,6 +12,7 @@ dependencies = [
     "Django==6.0.7",
     "djangorestframework>=3.16.1,<4",
     "gunicorn>=23.0.0,<24",
+    "httpx>=0.28.1,<1",
 ]
 
 [project.optional-dependencies]
@@ -22,7 +23,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["config*", "fuel*"]
+include = ["config*", "fuel*", "routing*"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"
