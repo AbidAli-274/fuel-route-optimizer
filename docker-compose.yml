@@ -8,6 +8,7 @@ services:
         required: false
     environment:
       DJANGO_DB_PATH: /data/db.sqlite3
+      DJANGO_DEBUG: "true"
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app

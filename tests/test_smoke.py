@@ -1,7 +1,11 @@
 """Smoke tests for the project bootstrap."""
 
 from django.conf import settings
+from django.contrib import admin
 from django.test import Client
+
+from fuel.models import FuelStation
+from routing.models import GeocodeCache, RouteCache
 
 
 def test_health_endpoint_does_not_require_database(client: Client) -> None:
@@ -25,3 +29,9 @@ def test_bootstrap_configuration() -> None:
     assert settings.DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3"
     assert "rest_framework" in settings.INSTALLED_APPS
     assert "fuel.apps.FuelConfig" in settings.INSTALLED_APPS
+
+
+def test_project_models_are_registered_in_admin() -> None:
+    assert FuelStation in admin.site._registry
+    assert GeocodeCache in admin.site._registry
+    assert RouteCache in admin.site._registry
